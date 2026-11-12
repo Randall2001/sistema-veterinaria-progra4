@@ -1,0 +1,444 @@
+--------------------------------------------------------------------------------
+-- PROYECTO DE PROGRAMACIÓN IV: SISTEMA DE GESTIÓN VETERINARIA
+-- VETCARE
+-- MOTOR: Oracle AI Database 26ai
+--
+-- SCRIPT MAESTRO
+-- Contiene:
+--   1. Creación de las ocho tablas y sus llaves foráneas
+--   2. Inserción de datos de prueba
+--   3. Procedimientos almacenados CRUD de clientes
+--   4. Consultas de verificación
+--
+-- IMPORTANTE:
+-- Este script está preparado para ejecutarse en un esquema NUEVO y VACÍO.
+-- No lo ejecutes completo sobre tablas que ya existen, porque CREATE TABLE
+-- producirá errores y los INSERT podrían duplicar información.
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+-- 1. CREACIÓN DE TABLAS
+-- Se crean primero las tablas padre y luego las dependientes.
+--------------------------------------------------------------------------------
+
+-- 1.1 Tabla Especie
+CREATE TABLE TBL_ESPECIE (
+    ID_ESPECIE NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    NOMBRE VARCHAR2(100 BYTE) NOT NULL
+);
+
+-- 1.2 Tabla Raza
+CREATE TABLE TBL_RAZA (
+    ID_RAZA NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    NOMBRE VARCHAR2(100 BYTE) NOT NULL,
+    ID_ESPECIE NUMBER NOT NULL,
+    CONSTRAINT TBL_RAZA_ESPECIE_FK
+        FOREIGN KEY (ID_ESPECIE)
+        REFERENCES TBL_ESPECIE (ID_ESPECIE)
+);
+
+-- 1.3 Tabla Cliente
+CREATE TABLE TBL_CLIENTE (
+    ID_CLIENTE NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    CEDULA VARCHAR2(50 BYTE) NOT NULL,
+    NOMBRE VARCHAR2(100 BYTE) NOT NULL,
+    APELLIDOS VARCHAR2(100 BYTE) NOT NULL,
+    TELEFONO VARCHAR2(20 BYTE),
+    CORREO VARCHAR2(100 BYTE),
+    DIRECCION VARCHAR2(200 BYTE)
+);
+
+-- 1.4 Tabla Veterinario
+CREATE TABLE TBL_VETERINARIO (
+    ID_VETERINARIO NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    NOMBRE VARCHAR2(100 BYTE) NOT NULL,
+    APELLIDOS VARCHAR2(100 BYTE) NOT NULL,
+    CEDULA VARCHAR2(50 BYTE) NOT NULL,
+    TELEFONO VARCHAR2(30 BYTE),
+    CORREO VARCHAR2(100 BYTE),
+    ESPECIALIDAD VARCHAR2(100 BYTE)
+);
+
+-- 1.5 Tabla Mascota
+CREATE TABLE TBL_MASCOTA (
+    ID_MASCOTA NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    NOMBRE VARCHAR2(100 BYTE) NOT NULL,
+    FECHA_NACIMIENTO DATE,
+    SEXO VARCHAR2(20 BYTE),
+    PESO NUMBER,
+    ID_RAZA NUMBER NOT NULL,
+    ID_CLIENTE NUMBER NOT NULL,
+    CONSTRAINT TBL_MASCOTA_CLIENTE_FK
+        FOREIGN KEY (ID_CLIENTE)
+        REFERENCES TBL_CLIENTE (ID_CLIENTE),
+    CONSTRAINT TBL_MASCOTA_RAZA_FK
+        FOREIGN KEY (ID_RAZA)
+        REFERENCES TBL_RAZA (ID_RAZA)
+);
+
+-- 1.6 Tabla Cita
+CREATE TABLE TBL_CITA (
+    ID_CITA NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    ID_MASCOTA NUMBER NOT NULL,
+    ID_VETERINARIO NUMBER NOT NULL,
+    FECHA DATE NOT NULL,
+    HORA VARCHAR2(20 BYTE) NOT NULL,
+    MOTIVO VARCHAR2(300 BYTE),
+    ESTADO VARCHAR2(50 BYTE) NOT NULL,
+    CONSTRAINT TBL_CITA_MASCOTA_FK
+        FOREIGN KEY (ID_MASCOTA)
+        REFERENCES TBL_MASCOTA (ID_MASCOTA),
+    CONSTRAINT TBL_CITA_VETERINARIO_FK
+        FOREIGN KEY (ID_VETERINARIO)
+        REFERENCES TBL_VETERINARIO (ID_VETERINARIO)
+);
+
+-- 1.7 Tabla Consulta
+CREATE TABLE TBL_CONSULTA (
+    ID_CONSULTA NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    ID_CITA NUMBER NOT NULL,
+    FECHA DATE NOT NULL,
+    SINTOMAS VARCHAR2(300 BYTE),
+    DIAGNOSTICO VARCHAR2(300 BYTE) NOT NULL,
+    OBSERVACIONES VARCHAR2(300 BYTE),
+    CONSTRAINT TBL_CONSULTA_CITA_FK
+        FOREIGN KEY (ID_CITA)
+        REFERENCES TBL_CITA (ID_CITA)
+);
+
+-- 1.8 Tabla Tratamiento
+CREATE TABLE TBL_TRATAMIENTO (
+    ID_TRATAMIENTO NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    ID_CONSULTA NUMBER NOT NULL,
+    MEDICAMENTO VARCHAR2(100 BYTE) NOT NULL,
+    DOSIS VARCHAR2(50 BYTE) NOT NULL,
+    FRECUENCIA VARCHAR2(100 BYTE) NOT NULL,
+    DURACION VARCHAR2(50 BYTE) NOT NULL,
+    INDICACIONES VARCHAR2(300 BYTE),
+    CONSTRAINT TBL_TRATAMIENTO_CONSULTA_FK
+        FOREIGN KEY (ID_CONSULTA)
+        REFERENCES TBL_CONSULTA (ID_CONSULTA)
+);
+
+
+--------------------------------------------------------------------------------
+-- 2. CARGA DE DATOS DE PRUEBA
+-- Los identificadores se generan automáticamente mediante IDENTITY.
+-- El orden de inserción respeta las relaciones entre las tablas.
+--------------------------------------------------------------------------------
+
+-- 2.1 Especies
+INSERT INTO TBL_ESPECIE (NOMBRE) VALUES ('Canino');
+INSERT INTO TBL_ESPECIE (NOMBRE) VALUES ('Felino');
+
+-- 2.2 Razas
+INSERT INTO TBL_RAZA (NOMBRE, ID_ESPECIE) VALUES ('Golden Retriever', 1);
+INSERT INTO TBL_RAZA (NOMBRE, ID_ESPECIE) VALUES ('Pastor Alemán', 1);
+INSERT INTO TBL_RAZA (NOMBRE, ID_ESPECIE) VALUES ('Bulldog Francés', 1);
+INSERT INTO TBL_RAZA (NOMBRE, ID_ESPECIE) VALUES ('Siamés', 2);
+INSERT INTO TBL_RAZA (NOMBRE, ID_ESPECIE) VALUES ('Persa', 2);
+INSERT INTO TBL_RAZA (NOMBRE, ID_ESPECIE) VALUES ('Maine Coon', 2);
+
+-- 2.3 Clientes
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('101110111', 'Carlos', 'Gómez Mora', '8888-1111',
+        'carlos@mail.com', 'San José');
+
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('202220222', 'María', 'Rodríguez Solís', '8888-2222',
+        'maria@mail.com', 'Alajuela');
+
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('303330333', 'José', 'Fernández Vargas', '8888-3333',
+        'jose@mail.com', 'Heredia');
+
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('404440444', 'Ana', 'Jiménez Campos', '8888-4444',
+        'ana@mail.com', 'Cartago');
+
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('505550555', 'Luis', 'Morales Rojas', '8888-5555',
+        'luis@mail.com', 'Puntarenas');
+
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('606660666', 'Sofía', 'Castro Monge', '8888-6666',
+        'sofia@mail.com', 'Limón');
+
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('707770777', 'David', 'Ramírez Quirós', '8888-7777',
+        'david@mail.com', 'Guanacaste');
+
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('808880888', 'Valeria', 'Salas Blanco', '8888-8888',
+        'valeria@mail.com', 'San Ramón');
+
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('909990999', 'Gabriel', 'Araya Picado', '8888-9999',
+        'gabriel@mail.com', 'Naranjo');
+
+INSERT INTO TBL_CLIENTE
+(CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION)
+VALUES ('101010101', 'Lucía', 'Cordero Ureña', '8888-0000',
+        'lucia@mail.com', 'Palmares');
+
+-- 2.4 Veterinarios
+INSERT INTO TBL_VETERINARIO
+(NOMBRE, APELLIDOS, CEDULA, TELEFONO, CORREO, ESPECIALIDAD)
+VALUES ('Esteban', 'Mora Vargas', '102220333', '8787-1111',
+        'dr.mora@vet.com', 'Cirugía General');
+
+INSERT INTO TBL_VETERINARIO
+(NOMBRE, APELLIDOS, CEDULA, TELEFONO, CORREO, ESPECIALIDAD)
+VALUES ('Mariana', 'Picado Rojas', '203330444', '8787-2222',
+        'dra.picado@vet.com', 'Medicina Felina');
+
+INSERT INTO TBL_VETERINARIO
+(NOMBRE, APELLIDOS, CEDULA, TELEFONO, CORREO, ESPECIALIDAD)
+VALUES ('Roberto', 'Quesada Soto', '304440555', '8787-3333',
+        'dr.quesada@vet.com', 'Dermatología');
+
+-- 2.5 Mascotas
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Max', TO_DATE('2022-05-10','YYYY-MM-DD'), 'Macho', 25.50, 1, 1);
+
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Luna', TO_DATE('2023-01-15','YYYY-MM-DD'), 'Hembra', 4.20, 4, 2);
+
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Thor', TO_DATE('2021-11-20','YYYY-MM-DD'), 'Macho', 32, 2, 3);
+
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Mila', TO_DATE('2023-06-05','YYYY-MM-DD'), 'Hembra', 12, 3, 4);
+
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Simba', TO_DATE('2022-08-12','YYYY-MM-DD'), 'Macho', 5.10, 5, 5);
+
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Kira', TO_DATE('2020-03-30','YYYY-MM-DD'), 'Hembra', 20, 1, 6);
+
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Rocky', TO_DATE('2023-02-18','YYYY-MM-DD'), 'Macho', 14.50, 3, 7);
+
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Nala', TO_DATE('2021-09-14','YYYY-MM-DD'), 'Hembra', 4.80, 6, 8);
+
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Zeus', TO_DATE('2022-12-01','YYYY-MM-DD'), 'Macho', 35, 2, 9);
+
+INSERT INTO TBL_MASCOTA
+(NOMBRE, FECHA_NACIMIENTO, SEXO, PESO, ID_RAZA, ID_CLIENTE)
+VALUES ('Cleo', TO_DATE('2023-04-22','YYYY-MM-DD'), 'Hembra', 3.90, 4, 10);
+
+-- 2.6 Citas
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (1, 1, TO_DATE('12/11/2026','DD/MM/YYYY'),
+        '09:00 AM', 'Control general y vacunación', 'Programada');
+
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (2, 2, TO_DATE('12/11/2026','DD/MM/YYYY'),
+        '10:00 AM', 'Limpieza de oídos y revisión felina', 'Programada');
+
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (3, 1, TO_DATE('12/11/2026','DD/MM/YYYY'),
+        '11:00 AM', 'Revisión por cojera en extremidad', 'Completada');
+
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (4, 3, TO_DATE('13/11/2026','DD/MM/YYYY'),
+        '01:30 PM', 'Control dermatológico por alergia en piel', 'Programada');
+
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (5, 2, TO_DATE('13/11/2026','DD/MM/YYYY'),
+        '02:30 PM', 'Desparasitación externa e interna', 'Programada');
+
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (6, 1, TO_DATE('14/11/2026','DD/MM/YYYY'),
+        '09:30 AM', 'Evaluación preoperatoria para cirugía', 'Programada');
+
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (7, 3, TO_DATE('14/11/2026','DD/MM/YYYY'),
+        '10:30 AM', 'Control de peso y dieta especializada', 'Programada');
+
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (8, 2, TO_DATE('15/11/2026','DD/MM/YYYY'),
+        '11:30 AM', 'Vacunación anual obligatoria', 'Programada');
+
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (9, 1, TO_DATE('15/11/2026','DD/MM/YYYY'),
+        '02:00 PM', 'Revisión general de rutina', 'Programada');
+
+INSERT INTO TBL_CITA
+(ID_MASCOTA, ID_VETERINARIO, FECHA, HORA, MOTIVO, ESTADO)
+VALUES (10, 2, TO_DATE('16/11/2026','DD/MM/YYYY'),
+        '03:00 PM', 'Consulta por decaimiento y pérdida de apetito',
+        'Programada');
+
+COMMIT;
+
+
+--------------------------------------------------------------------------------
+-- 3. PROCEDIMIENTOS ALMACENADOS CRUD DE CLIENTES
+--------------------------------------------------------------------------------
+
+-- 3.1 Guardar cliente
+CREATE OR REPLACE PROCEDURE SP_GUARDAR_CLIENTE (
+    p_cedula IN TBL_CLIENTE.CEDULA%TYPE,
+    p_nombre IN TBL_CLIENTE.NOMBRE%TYPE,
+    p_apellidos IN TBL_CLIENTE.APELLIDOS%TYPE,
+    p_telefono IN TBL_CLIENTE.TELEFONO%TYPE,
+    p_correo IN TBL_CLIENTE.CORREO%TYPE,
+    p_direccion IN TBL_CLIENTE.DIRECCION%TYPE,
+    p_respuesta OUT NUMBER
+) AS
+BEGIN
+    INSERT INTO TBL_CLIENTE (
+        CEDULA, NOMBRE, APELLIDOS, TELEFONO, CORREO, DIRECCION
+    ) VALUES (
+        p_cedula, p_nombre, p_apellidos,
+        p_telefono, p_correo, p_direccion
+    );
+
+    p_respuesta := 1;
+    COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        p_respuesta := -1;
+        RAISE;
+END SP_GUARDAR_CLIENTE;
+/
+
+-- 3.2 Actualizar cliente
+CREATE OR REPLACE PROCEDURE SP_ACTUALIZAR_CLIENTE (
+    p_id_cliente IN TBL_CLIENTE.ID_CLIENTE%TYPE,
+    p_telefono IN TBL_CLIENTE.TELEFONO%TYPE,
+    p_correo IN TBL_CLIENTE.CORREO%TYPE,
+    p_direccion IN TBL_CLIENTE.DIRECCION%TYPE,
+    p_respuesta OUT NUMBER
+) AS
+BEGIN
+    UPDATE TBL_CLIENTE
+    SET TELEFONO = p_telefono,
+        CORREO = p_correo,
+        DIRECCION = p_direccion
+    WHERE ID_CLIENTE = p_id_cliente;
+
+    IF SQL%ROWCOUNT > 0 THEN
+        p_respuesta := 1;
+        COMMIT;
+    ELSE
+        p_respuesta := -1;
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        p_respuesta := -1;
+        RAISE;
+END SP_ACTUALIZAR_CLIENTE;
+/
+
+-- 3.3 Listar clientes
+CREATE OR REPLACE PROCEDURE SP_LISTAR_CLIENTES (
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT ID_CLIENTE, CEDULA, NOMBRE, APELLIDOS,
+               TELEFONO, CORREO, DIRECCION
+        FROM TBL_CLIENTE
+        ORDER BY ID_CLIENTE;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE;
+END SP_LISTAR_CLIENTES;
+/
+
+-- 3.4 Eliminar cliente
+CREATE OR REPLACE PROCEDURE SP_ELIMINAR_CLIENTE (
+    p_id_cliente IN TBL_CLIENTE.ID_CLIENTE%TYPE,
+    p_respuesta OUT NUMBER
+) AS
+BEGIN
+    DELETE FROM TBL_CLIENTE
+    WHERE ID_CLIENTE = p_id_cliente;
+
+    IF SQL%ROWCOUNT > 0 THEN
+        p_respuesta := 1;
+        COMMIT;
+    ELSE
+        p_respuesta := -1;
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        p_respuesta := -1;
+        RAISE;
+END SP_ELIMINAR_CLIENTE;
+/
+
+
+--------------------------------------------------------------------------------
+-- 4. CONSULTAS DE VERIFICACIÓN
+-- Ejecutar esta sección después de crear los objetos y cargar los datos.
+--------------------------------------------------------------------------------
+
+-- Verificar registros de las tablas
+SELECT * FROM TBL_ESPECIE;
+SELECT * FROM TBL_RAZA;
+SELECT * FROM TBL_CLIENTE;
+SELECT * FROM TBL_VETERINARIO;
+SELECT * FROM TBL_MASCOTA;
+SELECT * FROM TBL_CITA;
+SELECT * FROM TBL_CONSULTA;
+SELECT * FROM TBL_TRATAMIENTO;
+
+-- Verificar tablas creadas
+SELECT TABLE_NAME
+FROM USER_TABLES
+ORDER BY TABLE_NAME;
+
+-- Verificar procedimientos almacenados
+SELECT OBJECT_NAME, STATUS
+FROM USER_OBJECTS
+WHERE OBJECT_TYPE = 'PROCEDURE'
+ORDER BY OBJECT_NAME;
+
+-- Verificar restricciones
+SELECT CONSTRAINT_NAME, TABLE_NAME, CONSTRAINT_TYPE, STATUS
+FROM USER_CONSTRAINTS
+ORDER BY TABLE_NAME, CONSTRAINT_TYPE;
+
+--------------------------------------------------------------------------------
+-- FIN DEL SCRIPT MAESTRO VETCARE
+--------------------------------------------------------------------------------
